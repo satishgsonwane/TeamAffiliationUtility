@@ -219,19 +219,21 @@ export default function ROISelector() {
                 width={100}
                 height={100}
               />
-              <select 
-                value={roi.category || ''} 
-                onChange={(e) => handleCategoryChange(roi.id, e.target.value as Category)}
-                className="mt-2"
-              >
-                <option value="">Select category</option>
-                <option value="teamA">Team A</option>
-                <option value="teamB">Team B</option>
-                <option value="referee">Referee</option>
-              </select>
-              <Button onClick={() => handleDiscard(roi.id)} variant="destructive" className="mt-2">
-                Discard
-              </Button>
+              <div className="flex flex-col items-center mt-2">
+                <select 
+                  value={roi.category || ''} 
+                  onChange={(e) => handleCategoryChange(roi.id, e.target.value as Category)}
+                  className="mb-2"
+                >
+                  <option value="">Select category</option>
+                  <option value="teamA">Team A</option>
+                  <option value="teamB">Team B</option>
+                  <option value="referee">Referee</option>
+                </select>
+                <Button onClick={() => handleDiscard(roi.id)} variant="destructive">
+                  Discard
+                </Button>
+              </div>
             </div>
           ))}
         </div>
