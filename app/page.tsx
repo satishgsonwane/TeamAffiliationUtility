@@ -15,7 +15,15 @@ export interface ROI {
   dataUrl: string | null
 }
 
-type ResizeHandle = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null
+type ResizeHandle = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
+
+interface HandleInfo {
+  x: number
+  y: number
+  cursor: string
+}
+
+const MIN_ROI_SIZE = 20
 
 export default function ROISelector() {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
@@ -24,10 +32,17 @@ export default function ROISelector() {
   const [currentROI, setCurrentROI] = useState<{ x: number, y: number, width: number, height: number } | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [selectedROI, setSelectedROI] = useState<number | null>(null)
-  const [activeHandle, setActiveHandle] = useState<ResizeHandle>(null)
+  const [activeHandle, setActiveHandle] = useState<ResizeHandle | null>(null)
   const [isResizing, setIsResizing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  const handles: Record<ResizeHandle, HandleInfo> = {
+    topLeft: { x: 0, y: 0, cursor: 'nw-resize' },
+    topRight: { x: 0, y: 0, cursor: 'ne-resize' },
+    bottomLeft: { x: 0, y: 0, cursor: 'sw-resize' },
+    bottomRight: { x: 0, y: 0, cursor: 'se-resize' }
+  }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -53,18 +68,19 @@ export default function ROISelector() {
     }
   }
 
-  const isInsideROI = (x: number, y: number, roi: ROI) => {
+  const isInsideROI = (x: number, y: number, roi: ROI | null) => {
+    if (!roi) return false
     return x >= roi.x && x <= roi.x + roi.width &&
            y >= roi.y && y <= roi.y + roi.height
   }
 
-  const getResizeHandle = (x: number, y: number, roi: ROI): ResizeHandle => {
+  const getResizeHandle = (x: number, y: number, roi: ROI): ResizeHandle | null => {
     const handleSize = 10
     const handles = {
-      topLeft: { x: roi.x, y: roi.y },
-      topRight: { x: roi.x + roi.width, y: roi.y },
-      bottomLeft: { x: roi.x, y: roi.y + roi.height },
-      bottomRight: { x: roi.x + roi.width, y: roi.y + roi.height }
+      topLeft: { x: roi.x, y: roi.y, cursor: 'nw-resize' },
+      topRight: { x: roi.x + roi.width, y: roi.y, cursor: 'ne-resize' },
+      bottomLeft: { x: roi.x, y: roi.y + roi.height, cursor: 'sw-resize' },
+      bottomRight: { x: roi.x + roi.width, y: roi.y + roi.height, cursor: 'se-resize' }
     }
 
     for (const [handle, pos] of Object.entries(handles)) {
@@ -73,6 +89,23 @@ export default function ROISelector() {
       }
     }
     return null
+  }
+  const constrainROISize = (roi: Pick<ROI, 'x' | 'y' | 'width' | 'height'>): Pick<ROI, 'x' | 'y' | 'width' | 'height'> => {
+    return {
+      ...roi,
+      width: Math.max(MIN_ROI_SIZE, roi.width),
+      height: Math.max(MIN_ROI_SIZE, roi.height)
+    }
+  }
+
+  const constrainToBounds = (roi: Pick<ROI, 'x' | 'y' | 'width' | 'height'>, bounds: { width: number; height: number }): Pick<ROI, 'x' | 'y' | 'width' | 'height'> => {
+    return {
+      ...roi,
+      x: Math.max(0, Math.min(roi.x, bounds.width - roi.width)),
+      y: Math.max(0, Math.min(roi.y, bounds.height - roi.height)),
+      width: Math.min(roi.width, bounds.width - roi.x),
+      height: Math.min(roi.height, bounds.height - roi.y)
+    }
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -103,6 +136,22 @@ export default function ROISelector() {
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getScaledCoordinates(e)
+    
+    // Update cursor based on position
+    const canvas = e.currentTarget
+    if (!isResizing && !isDrawing) {
+      const roi = selectedROI ? savedROIs.find(r => r.id === selectedROI) : null
+      if (roi) {
+        const handle = getResizeHandle(x, y, roi)
+        if (handle) {
+          canvas.style.cursor = handles[handle].cursor
+        } else if (isInsideROI(x, y, roi)) {
+          canvas.style.cursor = 'move'
+        } else {
+          canvas.style.cursor = 'crosshair'
+        }
+      }
+    }
 
     if (isResizing && selectedROI !== null) {
       const roi = savedROIs.find(r => r.id === selectedROI)
@@ -133,9 +182,14 @@ export default function ROISelector() {
           break
       }
 
-      // Update ROI with new dimensions
+      // Constrain ROI size and bounds
+      const constrainedROI = constrainToBounds(
+        constrainROISize(newROI),
+        { width: imageDimensions.width, height: imageDimensions.height }
+      )
+
       setSavedROIs(prev => prev.map(r => 
-        r.id === selectedROI ? { ...newROI } : r
+        r.id === selectedROI ? { ...r, ...constrainedROI } : r
       ))
       return
     }
@@ -170,10 +224,16 @@ export default function ROISelector() {
         height: Math.abs(height)
       }
 
-      captureROIImage(normalizedROI).then(dataUrl => {
+      // Apply constraints
+      const constrainedROI = constrainToBounds(
+        constrainROISize(normalizedROI),
+        { width: imageDimensions.width, height: imageDimensions.height }
+      )
+
+      captureROIImage(constrainedROI).then(dataUrl => {
         setSavedROIs(prev => [...prev, { 
           id: Date.now(), 
-          ...normalizedROI, 
+          ...constrainedROI, 
           category: null, 
           dataUrl 
         }])
@@ -193,7 +253,6 @@ export default function ROISelector() {
       r.id === roiId ? { ...r, dataUrl } : r
     ))
   }
-
   const captureROIImage = async (roi: Omit<ROI, 'id' | 'category' | 'dataUrl'>) => {
     const canvas = document.createElement('canvas')
     canvas.width = roi.width
@@ -236,54 +295,43 @@ export default function ROISelector() {
 
   const handleExport = () => {
     savedROIs.forEach(async (roi) => {
-      const canvas = document.createElement('canvas')
-      canvas.width = roi.width
-      canvas.height = roi.height
-      const ctx = canvas.getContext('2d')
-      
-      if (ctx && imageUrl) {
-        const img = new window.Image()
-        img.src = imageUrl
-        await new Promise(resolve => { img.onload = resolve })
-        
-        ctx.drawImage(
-          img,
-          roi.x,
-          roi.y,
-          roi.width,
-          roi.height,
-          0,
-          0,
-          roi.width,
-          roi.height
-        )
-        
-        canvas.toBlob(blob => {
-          if (blob) {
-            saveAs(blob, `${roi.category || 'roi'}-${roi.id}.png`)
-          }
-        })
+      if (roi.dataUrl) {
+        const response = await fetch(roi.dataUrl)
+        const blob = await response.blob()
+        saveAs(blob, `${roi.category || 'roi'}-${roi.id}.png`)
       }
     })
   }
 
   const drawResizeHandles = (ctx: CanvasRenderingContext2D, roi: ROI) => {
-    const handleSize = 6
-    const handles = [
-      { x: roi.x, y: roi.y }, // topLeft
-      { x: roi.x + roi.width, y: roi.y }, // topRight
-      { x: roi.x, y: roi.y + roi.height }, // bottomLeft
-      { x: roi.x + roi.width, y: roi.y + roi.height } // bottomRight
-    ]
+    const handleSize = 8
+    const handles = {
+      topLeft: { x: roi.x, y: roi.y },
+      topRight: { x: roi.x + roi.width, y: roi.y },
+      bottomLeft: { x: roi.x, y: roi.y + roi.height },
+      bottomRight: { x: roi.x + roi.width, y: roi.y + roi.height }
+    }
 
     ctx.fillStyle = 'white'
-    ctx.strokeStyle = 'blue'
-    handles.forEach(({ x, y }) => {
-      ctx.fillRect(x - handleSize/2, y - handleSize/2, handleSize, handleSize)
-      ctx.strokeRect(x - handleSize/2, y - handleSize/2, handleSize, handleSize)
+    ctx.strokeStyle = '#2196F3'
+    ctx.lineWidth = 2
+
+    Object.entries(handles).forEach(([handle, pos]) => {
+      // Add shadow effect
+      ctx.shadowColor = 'rgba(0,0,0,0.3)'
+      ctx.shadowBlur = 4
+      ctx.shadowOffsetX = 2
+      ctx.shadowOffsetY = 2
+      
+      ctx.beginPath()
+      ctx.arc(pos.x, pos.y, handleSize/2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      
+      // Reset shadow
+      ctx.shadowColor = 'transparent'
     })
   }
-
   useEffect(() => {
     if (imageUrl && canvasRef.current) {
       const img = new window.Image()
@@ -310,7 +358,7 @@ export default function ROISelector() {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
         
         savedROIs.forEach(roi => {
-          ctx.strokeStyle = roi.id === selectedROI ? 'blue' : 'red'
+          ctx.strokeStyle = roi.id === selectedROI ? '#2196F3' : '#FF4444'
           ctx.lineWidth = 2
           ctx.strokeRect(roi.x, roi.y, roi.width, roi.height)
           
@@ -320,7 +368,7 @@ export default function ROISelector() {
         })
 
         if (currentROI) {
-          ctx.strokeStyle = 'blue'
+          ctx.strokeStyle = '#2196F3'
           ctx.lineWidth = 2
           ctx.strokeRect(
             currentROI.x,
@@ -359,7 +407,12 @@ export default function ROISelector() {
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            className="absolute top-0 left-0 w-full h-full cursor-crosshair"
+            style={{ 
+              cursor: activeHandle && handles[activeHandle] 
+                ? handles[activeHandle].cursor 
+                : 'crosshair' 
+            }}
+            className="absolute top-0 left-0 w-full h-full"
           />
         </div>
       )}
@@ -380,7 +433,7 @@ export default function ROISelector() {
                   height={100}
                   className="border-2 rounded"
                   style={{
-                    borderColor: roi.id === selectedROI ? 'blue' : 'transparent'
+                    borderColor: roi.id === selectedROI ? '#2196F3' : 'transparent'
                   }}
                 />
               )}
@@ -411,7 +464,7 @@ export default function ROISelector() {
         <Button onClick={handleExport} variant="default" className="mt-4">
           Export Selected ROIs
         </Button>
-        )}
-      </div>
-    )
-  }
+      )}
+    </div>
+  )
+}
