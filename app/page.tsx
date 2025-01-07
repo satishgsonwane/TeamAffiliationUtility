@@ -1,101 +1,237 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
+import { Input } from "../components/ui/input"
+import { Button } from "../components/ui/button"
+import { ROI, Category } from '../types/roi'
+
+export default function ROISelector() {
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 })
+  const [savedROIs, setSavedROIs] = useState<ROI[]>([])
+  const [currentROI, setCurrentROI] = useState<{ x: number, y: number, width: number, height: number } | null>(null)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [scale, setScale] = useState({ x: 1, y: 1 })
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      console.error('No file selected')
+      return
+    }
+
+    const reader = new FileReader()
+
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        console.error('Failed to read file')
+        return
+      }
+
+      setImageUrl(reader.result)
+
+      const img = new window.Image()
+      img.onload = () => {
+        setImageDimensions({ width: img.width, height: img.height })
+      }
+      img.onerror = () => {
+        console.error('Failed to load image')
+      }
+      img.src = reader.result
+    }
+
+    reader.onerror = () => {
+      console.error('Error reading file:', reader.error)
+    }
+
+    reader.readAsDataURL(file)
+  }
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    
+    // Calculate position relative to canvas
+    const x = (e.clientX - rect.left) * scaleX
+    const y = (e.clientY - rect.top) * scaleY
+    
+    console.log('Mouse down at:', { x, y, scaleX, scaleY })
+    
+    setIsDrawing(true)
+    setCurrentROI({
+      x,
+      y,
+      width: 0,
+      height: 0
+    })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !currentROI) return
+    
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    
+    const x = (e.clientX - rect.left) * scaleX
+    const y = (e.clientY - rect.top) * scaleY
+    
+    setCurrentROI(prev => {
+      if (!prev) return null
+      return {
+        ...prev,
+        width: x - prev.x,
+        height: y - prev.y
+      }
+    })
+  }
+
+  const handleMouseUp = () => {
+    if (!isDrawing || !currentROI || !canvasRef.current) return
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    setIsDrawing(false)
+    const { x, y, width, height } = currentROI
+    
+    // Ensure positive width and height
+    const normalizedROI = {
+      x: width < 0 ? x + width : x,
+      y: height < 0 ? y + height : y,
+      width: Math.abs(width),
+      height: Math.abs(height)
+    }
+
+    const imageData = ctx.getImageData(
+      normalizedROI.x,
+      normalizedROI.y,
+      normalizedROI.width,
+      normalizedROI.height
+    )
+
+    const offscreenCanvas = document.createElement('canvas')
+    offscreenCanvas.width = normalizedROI.width
+    offscreenCanvas.height = normalizedROI.height
+    const offscreenCtx = offscreenCanvas.getContext('2d')
+    if (!offscreenCtx) return
+
+    offscreenCtx.putImageData(imageData, 0, 0)
+    const dataUrl = offscreenCanvas.toDataURL()
+
+    setSavedROIs(prev => [...prev, { id: Date.now(), dataUrl, category: null }])
+    setCurrentROI(null)
+  }
+
+  const handleCategoryChange = (roiId: number, category: Category) => {
+    setSavedROIs(prev => prev.map(roi => 
+      roi.id === roiId ? { ...roi, category } : roi
+    ))
+  }
+
+  const handleDiscard = (roiId: number) => {
+    setSavedROIs(prev => prev.filter(roi => roi.id !== roiId))
+  }
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !imageUrl) return
+    
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const img = new window.Image()
+    img.onload = () => {
+      // Set canvas to original image dimensions
+      canvas.width = img.width
+      canvas.height = img.height
+      
+      // Calculate scale factors
+      const rect = canvas.getBoundingClientRect()
+      setScale({
+        x: img.width / rect.width,
+        y: img.height / rect.height
+      })
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0)
+      
+      if (currentROI) {
+        ctx.strokeStyle = 'red'
+        ctx.strokeRect(
+          currentROI.x,
+          currentROI.y,
+          currentROI.width,
+          currentROI.height
+        )
+      }
+    }
+    img.src = imageUrl
+  }, [imageUrl, currentROI])
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">ROI Selector</h1>
+      <Input
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        ref={fileInputRef}
+        className="mb-4"
+      />
+      {imageUrl && (
+        <div className="mb-4 relative">
+          <Image
+            src={imageUrl}
+            alt="Uploaded image"
+            width={imageDimensions.width}
+            height={imageDimensions.height}
+            className="max-w-full h-auto"
+          />
+          <canvas
+            ref={canvasRef}
+            width={imageDimensions.width}
+            height={imageDimensions.height}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            className="absolute top-0 left-0 w-full h-full"
+          />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      )}
+      {savedROIs.map(roi => (
+        <div key={roi.id} className="mb-2">
+          <Image 
+            src={roi.dataUrl} 
+            alt={`ROI ${roi.id}`} 
+            width={100}
+            height={100}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <select 
+            value={roi.category || ''} 
+            onChange={(e) => handleCategoryChange(roi.id, e.target.value as Category)}
+          >
+            <option value="">Select category</option>
+            <option value="teamA">Team A</option>
+            <option value="teamB">Team B</option>
+            <option value="referee">Referee</option>
+          </select>
+          <Button onClick={() => handleDiscard(roi.id)} variant="destructive">
+            Discard
+          </Button>
+        </div>
+      ))}
     </div>
-  );
+  )
 }
+
