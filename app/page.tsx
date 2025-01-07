@@ -210,37 +210,31 @@ export default function ROISelector() {
         </div>
       )}
       {savedROIs.length > 0 && (
-        <>
-          <div className="flex flex-wrap mb-4">
-            {savedROIs.map(roi => (
-              <div key={roi.id} className="flex flex-col items-center mr-4 mb-4">
-                <Image 
-                  src={roi.dataUrl} 
-                  alt={`ROI ${roi.id}`} 
-                  width={100}
-                  height={100}
-                />
-                <select 
-                  value={roi.category || ''} 
-                  onChange={(e) => handleCategoryChange(roi.id, e.target.value as Category)}
-                  className="mt-2"
-                >
-                  <option value="">Select category</option>
-                  <option value="teamA">Team A</option>
-                  <option value="teamB">Team B</option>
-                  <option value="referee">Referee</option>
-                </select>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap mb-4">
-            {savedROIs.map(roi => (
-              <Button key={roi.id} onClick={() => handleDiscard(roi.id)} variant="destructive" className="mr-4 mb-4">
+        <div className="flex flex-wrap mb-4">
+          {savedROIs.map(roi => (
+            <div key={roi.id} className="flex flex-col items-center mr-4 mb-4">
+              <Image 
+                src={roi.dataUrl} 
+                alt={`ROI ${roi.id}`} 
+                width={100}
+                height={100}
+              />
+              <select 
+                value={roi.category || ''} 
+                onChange={(e) => handleCategoryChange(roi.id, e.target.value as Category)}
+                className="mt-2"
+              >
+                <option value="">Select category</option>
+                <option value="teamA">Team A</option>
+                <option value="teamB">Team B</option>
+                <option value="referee">Referee</option>
+              </select>
+              <Button onClick={() => handleDiscard(roi.id)} variant="destructive" className="mt-2">
                 Discard
               </Button>
-            ))}
-          </div>
-        </>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
