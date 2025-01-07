@@ -75,7 +75,7 @@ export default function ROISelector() {
   }
 
   const getResizeHandle = (x: number, y: number, roi: ROI): ResizeHandle | null => {
-    const handleSize = 10
+    const handleSize = 5
     const handles = {
       topLeft: { x: roi.x, y: roi.y, cursor: 'nw-resize' },
       topRight: { x: roi.x + roi.width, y: roi.y, cursor: 'ne-resize' },
@@ -136,23 +136,24 @@ export default function ROISelector() {
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getScaledCoordinates(e)
-    
-    // Update cursor based on position
     const canvas = e.currentTarget
+    
     if (!isResizing && !isDrawing) {
       const roi = selectedROI ? savedROIs.find(r => r.id === selectedROI) : null
       if (roi) {
         const handle = getResizeHandle(x, y, roi)
         if (handle) {
           canvas.style.cursor = handles[handle].cursor
+          canvas.style.cursor = `${handles[handle].cursor} !important`
         } else if (isInsideROI(x, y, roi)) {
           canvas.style.cursor = 'move'
         } else {
           canvas.style.cursor = 'crosshair'
         }
+      } else {
+        canvas.style.cursor = 'crosshair'
       }
     }
-
     if (isResizing && selectedROI !== null) {
       const roi = savedROIs.find(r => r.id === selectedROI)
       if (!roi || !activeHandle) return
@@ -304,7 +305,7 @@ export default function ROISelector() {
   }
 
   const drawResizeHandles = (ctx: CanvasRenderingContext2D, roi: ROI) => {
-    const handleSize = 8
+    const handleSize = 16
     const handles = {
       topLeft: { x: roi.x, y: roi.y },
       topRight: { x: roi.x + roi.width, y: roi.y },
@@ -317,20 +318,25 @@ export default function ROISelector() {
     ctx.lineWidth = 2
 
     Object.entries(handles).forEach(([handle, pos]) => {
-      // Add shadow effect
-      ctx.shadowColor = 'rgba(0,0,0,0.3)'
-      ctx.shadowBlur = 4
-      ctx.shadowOffsetX = 2
-      ctx.shadowOffsetY = 2
-      
+      // Draw larger outer circle
       ctx.beginPath()
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+      ctx.strokeStyle = '#2196F3'
+      ctx.lineWidth = 2.5
       ctx.arc(pos.x, pos.y, handleSize/2, 0, Math.PI * 2)
       ctx.fill()
       ctx.stroke()
       
-      // Reset shadow
-      ctx.shadowColor = 'transparent'
+      // Draw inner dot
+      ctx.beginPath()
+      ctx.fillStyle = '#2196F3'
+      ctx.arc(pos.x, pos.y, handleSize/4, 0, Math.PI * 2)
+      ctx.fill()
     })
+    
+    // Reset shadow
+    ctx.shadowColor = 'transparent'
+    ctx.shadowBlur = 0
   }
   useEffect(() => {
     if (imageUrl && canvasRef.current) {
