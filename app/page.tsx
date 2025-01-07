@@ -130,14 +130,25 @@ export default function ROISelector() {
     roi: Pick<ROI, 'x' | 'y' | 'width' | 'height'>, 
     bounds: { width: number; height: number }
   ): Pick<ROI, 'x' | 'y' | 'width' | 'height'> => {
-    return {
-      ...roi,
-      x: Math.max(CAPTURE_PADDING, Math.min(roi.x, bounds.width - roi.width - CAPTURE_PADDING)),
-      y: Math.max(CAPTURE_PADDING, Math.min(roi.y, bounds.height - roi.height - CAPTURE_PADDING)),
-      width: Math.min(roi.width, bounds.width - roi.x - CAPTURE_PADDING),
-      height: Math.min(roi.height, bounds.height - roi.y - CAPTURE_PADDING)
-    }
+    const pad = CAPTURE_PADDING
+    
+    // First constrain position
+    const x = Math.max(pad, Math.min(roi.x, bounds.width - roi.width - pad))
+    const y = Math.max(pad, Math.min(roi.y, bounds.height - roi.height - pad))
+  
+    // Then constrain size based on new position
+    const width = Math.max(
+      MIN_ROI_SIZE,
+      Math.min(roi.width, bounds.width - x - pad)
+    )
+    const height = Math.max(
+      MIN_ROI_SIZE,
+      Math.min(roi.height, bounds.height - y - pad)
+    )
+  
+    return { x, y, width, height }
   }
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getScaledCoordinates(e);
 
@@ -175,6 +186,7 @@ export default function ROISelector() {
     const { x, y } = getScaledCoordinates(e);
     const canvas = e.currentTarget;
     
+    // Handle cursor and hover states when not actively drawing or resizing
     if (!isResizing && !isDrawing) {
       const roi = selectedROI ? savedROIs.find(r => r.id === selectedROI) : null;
       if (roi) {
@@ -195,42 +207,65 @@ export default function ROISelector() {
         }
       }
     }
-
+  
+    // Handle resizing
     if (isResizing && selectedROI !== null) {
       const roi = savedROIs.find(r => r.id === selectedROI)
       if (!roi || !activeHandle) return
-
+  
       const newROI = { ...roi }
-
+      const padX = CAPTURE_PADDING
+      const padY = CAPTURE_PADDING
+  
       switch (activeHandle) {
         case 'topLeft':
+          // Account for padding when calculating new dimensions
           newROI.width += newROI.x - x
           newROI.height += newROI.y - y
-          newROI.x = x
-          newROI.y = y
+          newROI.x = Math.max(padX, x) // Ensure x doesn't go below padding
+          newROI.y = Math.max(padY, y) // Ensure y doesn't go below padding
           break;
           
         case 'topRight':
-          newROI.width = x - newROI.x
+          newROI.width = Math.min(x - newROI.x, imageDimensions.width - newROI.x - padX)
           newROI.height += newROI.y - y
-          newROI.y = y
+          newROI.y = Math.max(padY, y)
           break;
           
         case 'bottomLeft':
           newROI.width += newROI.x - x
-          newROI.height = y - newROI.y
-          newROI.x = x
+          newROI.height = Math.min(y - newROI.y, imageDimensions.height - newROI.y - padY)
+          newROI.x = Math.max(padX, x)
           break;
           
         case 'bottomRight':
-          newROI.width = x - newROI.x
-          newROI.height = y - newROI.y
+          newROI.width = Math.min(x - newROI.x, imageDimensions.width - newROI.x - padX)
+          newROI.height = Math.min(y - newROI.y, imageDimensions.height - newROI.y - padY)
           break;
       }
-      
+  
+      // Apply minimum size constraints
+      if (newROI.width < MIN_ROI_SIZE) {
+        if (['topLeft', 'bottomLeft'].includes(activeHandle)) {
+          newROI.x = roi.x + roi.width - MIN_ROI_SIZE
+        }
+        newROI.width = MIN_ROI_SIZE
+      }
+  
+      if (newROI.height < MIN_ROI_SIZE) {
+        if (['topLeft', 'topRight'].includes(activeHandle)) {
+          newROI.y = roi.y + roi.height - MIN_ROI_SIZE
+        }
+        newROI.height = MIN_ROI_SIZE
+      }
+  
+      // Ensure ROI stays within bounds while maintaining minimum size
       const constrainedROI = constrainToBounds(
         constrainROISize(newROI),
-        { width: imageDimensions.width, height: imageDimensions.height }
+        { 
+          width: imageDimensions.width,
+          height: imageDimensions.height 
+        }
       )
       
       setSavedROIs(prev => prev.map(r => 
@@ -238,7 +273,8 @@ export default function ROISelector() {
       ))
       return
     }
-
+  
+    // Handle drawing new ROI
     if (isDrawing && currentROI) {
       setCurrentROI(prev => prev ? {
         ...prev,
