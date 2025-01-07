@@ -148,6 +148,34 @@ export default function ROISelector() {
     }
   }, [imageUrl])
 
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    if (imageUrl) {
+      const img = new window.Image()
+      img.src = imageUrl
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        savedROIs.forEach(roi => {
+          ctx.strokeStyle = 'red'
+          ctx.lineWidth = 2
+          ctx.strokeRect(roi.x, roi.y, roi.width, roi.height)
+        })
+        if (currentROI) {
+          ctx.strokeStyle = 'blue'
+          ctx.lineWidth = 2
+          ctx.strokeRect(currentROI.x, currentROI.y, currentROI.width, currentROI.height)
+        }
+      }
+    }
+  }, [imageUrl, savedROIs, currentROI])
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">ROI Selector</h1>
