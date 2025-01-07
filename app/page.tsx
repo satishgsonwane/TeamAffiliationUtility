@@ -224,9 +224,11 @@ export default function ROISelector() {
                 className="mt-2"
               >
                 <option value="">Select category</option>
-                <option value="teamA">Team A</option>
-                <option value="teamB">Team B</option>
-                <option value="referee">Referee</option>
+                <option value="TeamA_Player">TeamA_Player</option>
+                <option value="TeamA_Goalkeeper">TeamA_Goalkeeper</option>
+                <option value="TeamB_Player">TeamB_Player</option>
+                <option value="TeamB_Goalkeeper">TeamB_Goalkeeper</option>
+                <option value="Referee">Referee</option>
               </select>
               <Button onClick={() => handleDiscard(roi.id)} variant="destructive" className="mt-2">
                 Discard
