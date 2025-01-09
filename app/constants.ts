@@ -1,0 +1,1 @@
+export const HANDLE_INTERACTION_SIZE = 8 // pixels for handle hit detection
