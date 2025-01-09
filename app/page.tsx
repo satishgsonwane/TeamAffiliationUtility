@@ -393,16 +393,27 @@ export default function ROISelector() {
       setSelectedROI(null)
     }
   }
+  const formatTimestamp = (date: Date): string => {
+    return date.toISOString()
+      .replace(/[:.]/g, '-')
+      .replace('T', '_')
+      .replace('Z', '');
+  }
+
   const [exportStatus, setExportStatus] = useState<string>('');
-  
+
   const handleExport = async () => {
     setExportStatus('Starting export...');
   
     const categorizedROIs = savedROIs.filter(roi => roi.category && roi.dataUrl);
     const uncategorizedCount = savedROIs.length - categorizedROIs.length;
   
+    // Show warning with Badge component
     if (uncategorizedCount > 0) {
-      setExportStatus(`Warning: ${uncategorizedCount} uncategorized ROIs will be skipped.`);
+      setExportStatus(
+        `Warning: ${uncategorizedCount} uncategorized ROIs will be skipped.`
+      );
+      // Add visual delay with styled loading state
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
   
@@ -412,10 +423,7 @@ export default function ROISelector() {
     try {
       for (const roi of categorizedROIs) {
         if (roi.dataUrl) {
-          const timestamp = new Date().toISOString()
-            .replace(/[:.]/g, '-')
-            .replace('T', '_')
-            .replace('Z', '');
+          const timestamp = formatTimestamp(new Date());
   
           const filename = `${timestamp}_${roi.id}.png`;
   
@@ -528,88 +536,123 @@ export default function ROISelector() {
   }, [imageUrl, savedROIs, currentROI, selectedROI])
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">ROI Selector</h1>
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleImageUpload}
-        ref={fileInputRef}
-        className="mb-4"
-      />
-      {imageUrl && (
-        <div className="mb-4 relative">
-          <Image
-            src={imageUrl}
-            alt="Uploaded image"
-            width={imageDimensions.width}
-            height={imageDimensions.height}
-            className="max-w-full h-auto"
-          />
-          <canvas
-            ref={canvasRef}
-            width={imageDimensions.width}
-            height={imageDimensions.height}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            className={`absolute top-0 left-0 w-full h-full ${
-              activeHandle 
-                ? handles[activeHandle].cursor 
-                : 'cursor-crosshair'
-            }`}
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto p-8">
+        {/* Header Section */}
+        <header className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">ROI Selector</h1>
+          <p className="text-gray-600">Select and categorize regions of interest in your image</p>
+        </header>
+
+        {/* Upload Button Section */}
+        <div className="mb-4">
+          <label 
+            htmlFor="file-upload" 
+            className="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 
+              text-white rounded-lg transition-colors duration-200"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Upload Image
+          </label>
+          <input
+            id="file-upload"
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            ref={fileInputRef}
+            className="hidden"
           />
         </div>
-      )}
-      {savedROIs.length > 0 && (
-        <div className="flex flex-wrap mb-4">
-          {savedROIs.map(roi => (
-            <div 
-              key={roi.id} 
-              className={`flex flex-col items-center mr-4 mb-4 p-2 rounded-lg ${
-                roi.id === selectedROI ? 'bg-blue-100' : ''
-              }`}
-            >
-              {roi.dataUrl && (
-                <Image 
-                  src={roi.dataUrl} 
-                  alt={`ROI ${roi.id}`} 
-                  width={100}
-                  height={100}
-                  className="border-2 rounded"
-                  style={{
-                    borderColor: roi.id === selectedROI ? '#2196F3' : 'transparent'
-                  }}
-                />
-              )}
-              <select 
-              value={roi.category || ''} 
-              onChange={(e) => handleCategoryChange(roi.id, e.target.value)}
-              className="mt-2 p-1 rounded border"
-            >
-              <option value="">Select category</option>
-              <option value="team_A/player">Team A Player</option>
-              <option value="team_A/goalkeeper">Team A Goalkeeper</option>
-              <option value="team_B/player">Team B Player</option>
-              <option value="team_B/goalkeeper">Team B Goalkeeper</option>
-              <option value="referee/referee">Referee</option>
-            </select>
-              <Button 
-                onClick={() => handleDiscard(roi.id)} 
-                variant="destructive" 
-                className="mt-2"
-              >
-                Discard
-              </Button>
+
+        {/* Dedicated Image Container */}
+        <div className="mb-8 bg-white rounded-lg shadow-lg p-4 min-h-[400px] flex items-center justify-center">
+          {imageUrl ? (
+            <div className="relative w-full">
+              <Image
+                src={imageUrl}
+                alt="Uploaded image"
+                width={imageDimensions.width}
+                height={imageDimensions.height}
+                className="max-w-full h-auto rounded-md"
+              />
+              <canvas
+                ref={canvasRef}
+                width={imageDimensions.width}
+                height={imageDimensions.height}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                className={`absolute top-0 left-0 w-full h-full ${
+                  activeHandle ? handles[activeHandle].cursor : 'cursor-crosshair'
+                }`}
+              />
             </div>
-          ))}
+          ) : (
+            <div className="text-gray-400 text-center">
+              <svg className="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p>Upload an image to begin</p>
+            </div>
+          )}
         </div>
-      )}
-      {savedROIs.length > 0 && (
-        <Button onClick={handleExport} variant="default" className="mt-4">
-          Export Selected ROIs
-        </Button>
-      )}
+
+        {/* ROI Cards - Smaller width */}
+        {savedROIs.length > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 mt-4">
+            {savedROIs.map(roi => (
+              <div
+                key={roi.id}
+                className={`p-2 rounded-lg border max-w-[160px] ${
+                  roi.id === selectedROI ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                }`}
+              >
+                {roi.dataUrl && (
+                  <img
+                    src={roi.dataUrl}
+                    alt={`ROI ${roi.id}`}
+                    className="w-full h-20 object-contain mb-2"
+                  />
+                )}
+                <select 
+                  value={roi.category || ''} 
+                  onChange={(e) => handleCategoryChange(roi.id, e.target.value)}
+                  className="w-full p-1 mb-1 border rounded text-xs"
+                >
+                  <option value="">Select category</option>
+                  <option value="team_A/player">Team A Player</option>
+                  <option value="team_A/goalkeeper">Team A Goalkeeper</option>
+                  <option value="team_B/player">Team B Player</option>
+                  <option value="team_B/goalkeeper">Team B Goalkeeper</option>
+                  <option value="referee/referee">Referee</option>
+                </select>
+                <Button 
+                  onClick={() => handleDiscard(roi.id)} 
+                  variant="destructive" 
+                  className="w-full text-xs py-0.5"
+                >
+                  Discard
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Export Section */}
+        <div className="mt-8 flex items-center justify-center gap-4">
+          <Button 
+            onClick={handleExport}
+            className="bg-green-600 hover:bg-green-700 text-white px-8"
+          >
+            Export ROIs
+          </Button>
+          {exportStatus && (
+            <span className="text-sm text-gray-600">{exportStatus}</span>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
