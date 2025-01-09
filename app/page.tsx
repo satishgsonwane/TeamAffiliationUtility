@@ -536,20 +536,20 @@ export default function ROISelector() {
   }, [imageUrl, savedROIs, currentROI, selectedROI])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto p-8">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Header Section */}
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">ROI Selector</h1>
-          <p className="text-gray-600">Select and categorize regions of interest in your image</p>
+        <header className="text-center space-y-2">
+          <h1 className="text-4xl font-bold text-gray-800 tracking-tight">ROI Selector</h1>
+          <p className="text-gray-600 text-lg">Select and categorize regions of interest in your image</p>
         </header>
 
-        {/* Upload Button Section */}
-        <div className="mb-4">
+        {/* Upload Section */}
+        <div className="flex justify-center">
           <label 
             htmlFor="file-upload" 
-            className="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 
-              text-white rounded-lg transition-colors duration-200"
+            className="cursor-pointer inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 
+              text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/>
@@ -566,8 +566,9 @@ export default function ROISelector() {
           />
         </div>
 
-        {/* Dedicated Image Container */}
-        <div className="mb-8 bg-white rounded-lg shadow-lg p-4 min-h-[400px] flex items-center justify-center">
+        {/* Image Container */}
+        <div className="bg-white rounded-xl shadow-lg p-6 min-h-[400px] flex items-center justify-center
+          border border-gray-200 transition-all duration-200">
           {imageUrl ? (
             <div className="relative w-full">
               <Image
@@ -599,57 +600,63 @@ export default function ROISelector() {
           )}
         </div>
 
-        {/* ROI Cards - Smaller width */}
-        {savedROIs.length > 0 && (
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 mt-4">
-            {savedROIs.map(roi => (
-              <div
-                key={roi.id}
-                className={`p-2 rounded-lg border max-w-[160px] ${
-                  roi.id === selectedROI ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                }`}
-              >
-                {roi.dataUrl && (
+        {/* ROI Grid */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+          {savedROIs.map(roi => (
+            <div
+              key={roi.id}
+              className={`
+                p-3 rounded-lg border transition-all duration-200
+                hover:shadow-md max-w-[160px]
+                ${roi.id === selectedROI 
+                  ? 'border-blue-500 bg-blue-50 shadow-md' 
+                  : 'border-gray-200 bg-white'}
+              `}
+            >
+              {roi.dataUrl && (
+                <div className="overflow-hidden rounded-md mb-2">
                   <img
                     src={roi.dataUrl}
                     alt={`ROI ${roi.id}`}
-                    className="w-full h-20 object-contain mb-2"
+                    className="w-full h-20 object-contain"
                   />
-                )}
-                <select 
-                  value={roi.category || ''} 
-                  onChange={(e) => handleCategoryChange(roi.id, e.target.value)}
-                  className="w-full p-1 mb-1 border rounded text-xs"
-                >
-                  <option value="">Select category</option>
-                  <option value="team_A/player">Team A Player</option>
-                  <option value="team_A/goalkeeper">Team A Goalkeeper</option>
-                  <option value="team_B/player">Team B Player</option>
-                  <option value="team_B/goalkeeper">Team B Goalkeeper</option>
-                  <option value="referee/referee">Referee</option>
-                </select>
-                <Button 
-                  onClick={() => handleDiscard(roi.id)} 
-                  variant="destructive" 
-                  className="w-full text-xs py-0.5"
-                >
-                  Discard
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
+                </div>
+              )}
+              <select 
+                value={roi.category || ''} 
+                onChange={(e) => handleCategoryChange(roi.id, e.target.value)}
+                className="w-full p-1.5 mb-1.5 border rounded text-xs bg-white hover:border-gray-400 
+                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              >
+                <option value="">Select category</option>
+                <option value="team_A/player">Team A Player</option>
+                <option value="team_A/goalkeeper">Team A Goalkeeper</option>
+                <option value="team_B/player">Team B Player</option>
+                <option value="team_B/goalkeeper">Team B Goalkeeper</option>
+                <option value="referee/referee">Referee</option>
+              </select>
+              <Button 
+                onClick={() => handleDiscard(roi.id)} 
+                variant="destructive" 
+                className="w-full text-xs py-1 transition-colors duration-200"
+              >
+                Discard
+              </Button>
+            </div>
+          ))}
+        </div>
 
         {/* Export Section */}
-        <div className="mt-8 flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-4 pt-4">
           <Button 
             onClick={handleExport}
-            className="bg-green-600 hover:bg-green-700 text-white px-8"
+            className="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg 
+              shadow-md hover:shadow-lg transition-all duration-200"
           >
             Export ROIs
           </Button>
           {exportStatus && (
-            <span className="text-sm text-gray-600">{exportStatus}</span>
+            <span className="text-sm text-gray-600 animate-fade-in">{exportStatus}</span>
           )}
         </div>
       </div>
