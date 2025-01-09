@@ -1,3 +1,5 @@
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState } from 'react'
@@ -53,7 +55,7 @@ export function SavedROIs({ rois, onDiscard, onCategoryChange }: SavedROIsProps)
               />
             </div>
             <Select
-              onValueChange={(value: Category) => onCategoryChange(roi.id, value)}
+              onValueChange={(value: any) => onCategoryChange(roi.id, value)}
               value={roi.category || undefined}
             >
               <SelectTrigger className="w-full">

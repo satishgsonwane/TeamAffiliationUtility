@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { saveAs } from 'file-saver'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 
@@ -469,7 +468,7 @@ export default function ROISelector() {
     ctx.shadowColor = 'rgba(33, 150, 243, 0.3)'
     ctx.shadowBlur = 8
 
-    Object.entries(handles).forEach(([handle, pos]) => {
+    Object.entries(handles).forEach(([, pos]) => {
       // Draw outer circle (white with blue border)
       ctx.beginPath()
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
