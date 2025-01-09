@@ -393,16 +393,62 @@ export default function ROISelector() {
       setSelectedROI(null)
     }
   }
-
-  const handleExport = () => {
-    savedROIs.forEach(async (roi) => {
-      if (roi.dataUrl) {
-        const response = await fetch(roi.dataUrl)
-        const blob = await response.blob()
-        saveAs(blob, `${roi.category || 'roi'}-${roi.id}.png`)
+  const [exportStatus, setExportStatus] = useState<string>('');
+  
+  const handleExport = async () => {
+    setExportStatus('Starting export...');
+  
+    const categorizedROIs = savedROIs.filter(roi => roi.category && roi.dataUrl);
+    const uncategorizedCount = savedROIs.length - categorizedROIs.length;
+  
+    if (uncategorizedCount > 0) {
+      setExportStatus(`Warning: ${uncategorizedCount} uncategorized ROIs will be skipped.`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  
+    let exportedCount = 0;
+    const totalToExport = categorizedROIs.length;
+  
+    try {
+      for (const roi of categorizedROIs) {
+        if (roi.dataUrl) {
+          const timestamp = new Date().toISOString()
+            .replace(/[:.]/g, '-')
+            .replace('T', '_')
+            .replace('Z', '');
+  
+          const filename = `${timestamp}_${roi.id}.png`;
+  
+          const response = await fetch('/api/save-roi', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              imageData: roi.dataUrl,
+              category: roi.category,
+              filename,
+            }),
+          });
+  
+          if (!response.ok) {
+            throw new Error(`Failed to save ROI ${roi.id}`);
+          }
+  
+          exportedCount++;
+          setExportStatus(`Exported ${exportedCount}/${totalToExport}`);
+        }
       }
-    })
-  }
+  
+      setExportStatus(`Successfully exported ${exportedCount} ROIs!`);
+      setTimeout(() => setExportStatus(''), 3000);
+  
+    } catch (error) {
+      console.error('Export failed:', error);
+      setExportStatus('Export failed. Check console for details.');
+      setTimeout(() => setExportStatus(''), 5000);
+    }
+  };
 
   const drawResizeHandles = (ctx: CanvasRenderingContext2D, roi: ROI) => {
     const handles = {
@@ -537,17 +583,17 @@ export default function ROISelector() {
                 />
               )}
               <select 
-                value={roi.category || ''} 
-                onChange={(e) => handleCategoryChange(roi.id, e.target.value)}
-                className="mt-2 p-1 rounded border"
-              >
-                <option value="">Select category</option>
-                <option value="TeamA_Player">TeamA Player</option>
-                <option value="TeamA_Goalkeeper">TeamA Goalkeeper</option>
-                <option value="TeamB_Player">TeamB Player</option>
-                <option value="TeamB_Goalkeeper">TeamB Goalkeeper</option>
-                <option value="Referee">Referee</option>
-              </select>
+              value={roi.category || ''} 
+              onChange={(e) => handleCategoryChange(roi.id, e.target.value)}
+              className="mt-2 p-1 rounded border"
+            >
+              <option value="">Select category</option>
+              <option value="team_A/player">Team A Player</option>
+              <option value="team_A/goalkeeper">Team A Goalkeeper</option>
+              <option value="team_B/player">Team B Player</option>
+              <option value="team_B/goalkeeper">Team B Goalkeeper</option>
+              <option value="referee/referee">Referee</option>
+            </select>
               <Button 
                 onClick={() => handleDiscard(roi.id)} 
                 variant="destructive" 
