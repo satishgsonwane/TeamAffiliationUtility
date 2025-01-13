@@ -410,6 +410,8 @@ export default function ROISelector() {
         const timestamp = formatTimestamp(new Date())
         const imageName = generateImageName(roi.category!, index, timestamp)
         
+        console.log(`Exporting ROI `, {imageName, roi})
+
         // Upload image
         const response = await fetch('/api/upload-roi', {
           method: 'POST',

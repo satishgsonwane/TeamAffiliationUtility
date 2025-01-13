@@ -19,8 +19,12 @@ export async function POST(request: Request) {
     // Convert base64 to buffer
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '')
     const buffer = Buffer.from(base64Data, 'base64')
+
+    const newImageName = imageName.split("/")[1];
     
-    const filepath = `${category}/${imageName}.png`
+    const filepath = `${category}/${newImageName}.png`
+
+    // console.log("Uploading image to", {imageName, category, filepath, newImageName});
 
     const { error: uploadError } = await supabaseAdmin
       .storage
