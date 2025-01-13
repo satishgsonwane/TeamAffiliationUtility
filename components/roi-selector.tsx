@@ -33,6 +33,7 @@ const CAPTURE_PADDING = 5 // New constant for ROI capture padding
 const handleExport = async (savedROIs: ROI[], setExportStatus: (status: string) => void) => {
   setExportStatus('Starting export...');
 
+  // Only process ROIs with category and dataUrl
   const categorizedROIs = savedROIs.filter(roi => roi.category && roi.dataUrl);
   const uncategorizedCount = savedROIs.length - categorizedROIs.length;
 
@@ -45,16 +46,32 @@ const handleExport = async (savedROIs: ROI[], setExportStatus: (status: string) 
   const totalToExport = categorizedROIs.length;
 
   try {
-    for (const roi of categorizedROIs) {
-      if (roi.dataUrl) {
+    // Group ROIs by category for sequential numbering
+    const roisByCategory = categorizedROIs.reduce((acc, roi) => {
+      if (roi.category) {
+        if (!acc[roi.category]) {
+          acc[roi.category] = [];
+        }
+        acc[roi.category].push(roi);
+      }
+      return acc;
+    }, {} as Record<string, ROI[]>);
+
+    // Process each category group
+    for (const category in roisByCategory) {
+      const rois = roisByCategory[category];
+      for (let i = 0; i < rois.length; i++) {
+        const roi = rois[i];
+        const imageName = generateImageName(category, i);
+
         const response = await fetch('/api/save-roi', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            userId: roi.userId, // Ensure this is a valid UUID
-            imageName: roi.imageName,
+            userId: roi.userId,
+            imageName,
             x: roi.x,
             y: roi.y,
             width: roi.width,
@@ -65,7 +82,7 @@ const handleExport = async (savedROIs: ROI[], setExportStatus: (status: string) 
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to save ROI ${roi.id}`);
+          throw new Error(`Failed to save ROI ${imageName}`);
         }
 
         exportedCount++;
@@ -81,6 +98,12 @@ const handleExport = async (savedROIs: ROI[], setExportStatus: (status: string) 
     setTimeout(() => setExportStatus(''), 5000);
   }
 };
+
+const generateImageName = (category: string, index: number): string => {
+  // Remove any path separators from category and replace with underscore
+  const safeName = category.replace(/[\/\\]/g, '_')
+  return `${safeName}_${index + 1}`
+}
 
 export default function ROISelector() {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
