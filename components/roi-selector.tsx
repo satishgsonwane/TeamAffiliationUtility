@@ -31,78 +31,48 @@ const STICKY_FACTOR = 2
 const CAPTURE_PADDING = 5 // New constant for ROI capture padding
 
 const handleExport = async (savedROIs: ROI[], setExportStatus: (status: string) => void) => {
-  setExportStatus('Starting export...');
-
-  // Only process ROIs with category and dataUrl
-  const categorizedROIs = savedROIs.filter(roi => roi.category && roi.dataUrl);
-  const uncategorizedCount = savedROIs.length - categorizedROIs.length;
-
-  if (uncategorizedCount > 0) {
-    setExportStatus(`Warning: ${uncategorizedCount} uncategorized ROIs will be skipped.`);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
-
-  let exportedCount = 0;
-  const totalToExport = categorizedROIs.length;
-
+  setExportStatus('Starting export...')
+  
+  const categorizedROIs = savedROIs.filter(roi => roi.category && roi.dataUrl)
+  
   try {
-    // Group ROIs by category for sequential numbering
-    const roisByCategory = categorizedROIs.reduce((acc, roi) => {
-      if (roi.category) {
-        if (!acc[roi.category]) {
-          acc[roi.category] = [];
-        }
-        acc[roi.category].push(roi);
+    for (const [index, roi] of categorizedROIs.entries()) {
+      const imageName = generateImageName(roi.category!, index)
+      
+      const response = await fetch('/api/upload-roi', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData: roi.dataUrl,
+          category: roi.category,
+          imageName
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Upload failed')
       }
-      return acc;
-    }, {} as Record<string, ROI[]>);
-
-    // Process each category group
-    for (const category in roisByCategory) {
-      const rois = roisByCategory[category];
-      for (let i = 0; i < rois.length; i++) {
-        const roi = rois[i];
-        const imageName = generateImageName(category, i);
-
-        const response = await fetch('/api/save-roi', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: roi.userId,
-            imageName,
-            x: roi.x,
-            y: roi.y,
-            width: roi.width,
-            height: roi.height,
-            category: roi.category,
-            dataUrl: roi.dataUrl,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to save ROI ${imageName}`);
-        }
-
-        exportedCount++;
-        setExportStatus(`Exported ${exportedCount}/${totalToExport}`);
-      }
+      
+      const { url } = await response.json()
+      // Store URL in database if needed
+      
+      setExportStatus(`Exported ${index + 1}/${categorizedROIs.length}`)
     }
 
-    setExportStatus(`Successfully exported ${exportedCount} ROIs!`);
-    setTimeout(() => setExportStatus(''), 3000);
+    setExportStatus('Export complete!')
+    setTimeout(() => setExportStatus(''), 3000)
   } catch (error) {
-    console.error('Export failed:', error);
-    setExportStatus('Export failed. Check console for details.');
-    setTimeout(() => setExportStatus(''), 5000);
+    console.error('Export error:', error)
+    setExportStatus(`Export failed: ${(error as Error).message}`)
+    setTimeout(() => setExportStatus(''), 5000)
   }
-};
+}
 
-const generateImageName = (category: string, index: number): string => {
-  // Remove any path separators from category and replace with underscore
-  const safeName = category.replace(/[\/\\]/g, '_')
-  return `${safeName}_${index + 1}`
+const generateImageName = (category: string, index: number) => {
+  return `${category}_${Date.now()}_${index}`
 }
 
 export default function ROISelector() {
