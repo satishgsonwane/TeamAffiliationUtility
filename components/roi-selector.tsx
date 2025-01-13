@@ -602,8 +602,8 @@ const Home = () => {
             <Card>
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-4">Regions of Interest</h2>
-                <ScrollArea className="h-[50vh]">
-                  <div className="grid grid-cols-3 gap-4">
+                <ScrollArea className="h-[25vh]">
+                  <div className="grid grid-cols-2 gap-2">
                     {savedROIs.map(roi => (
                       <Card
                         key={roi.id}
@@ -611,9 +611,9 @@ const Home = () => {
                           roi.id === selectedROI ? 'ring-2 ring-blue-500' : ''
                         }`}
                       >
-                        <CardContent className="p-3 space-y-2">
+                        <CardContent className="p-2 space-y-1">
                           {typeof roi.dataUrl === 'string' && roi.dataUrl && (
-                            <div className="aspect-square relative overflow-hidden rounded-md">
+                            <div className="aspect-square relative overflow-hidden rounded-sm h-16">
                               <Image
                                 src={roi.dataUrl}
                                 alt={`ROI ${roi.id}`}
@@ -625,6 +625,7 @@ const Home = () => {
                           <Select
                             value={roi.category || ''}
                             onValueChange={(value) => handleCategoryChange(roi.id, value)}
+                            // size="sm"
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select category" />
