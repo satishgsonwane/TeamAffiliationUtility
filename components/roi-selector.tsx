@@ -576,9 +576,9 @@ const Home = () => {
                     setSavedROIs([]);
                     if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
-                  variant="outline"
+                  variant="destructive"
                   size="sm"
-                  className="mt-4 self-start"
+                  className="mt-4 mx-auto self-start"
                 >
                   Remove Image
                 </Button>
@@ -603,7 +603,7 @@ const Home = () => {
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-4">Regions of Interest</h2>
                 <ScrollArea className="h-[25vh]">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-5 gap-2">
                     {savedROIs.map(roi => (
                       <Card
                         key={roi.id}
@@ -611,14 +611,14 @@ const Home = () => {
                           roi.id === selectedROI ? 'ring-2 ring-blue-500' : ''
                         }`}
                       >
-                        <CardContent className="p-2 space-y-1">
+                        <CardContent className="p-4 space-y-2 bg-red-50 h-auto w-full">
                           {typeof roi.dataUrl === 'string' && roi.dataUrl && (
-                            <div className="aspect-square relative overflow-hidden rounded-sm h-16">
+                            <div className="aspect-square relative overflow-hidden rounded-sm h-24 mx-auto w-full">
                               <Image
                                 src={roi.dataUrl}
                                 alt={`ROI ${roi.id}`}
                                 layout="fill"
-                                objectFit="cover"
+                                objectFit="contain"
                               />
                             </div>
                           )}
@@ -627,7 +627,7 @@ const Home = () => {
                             onValueChange={(value) => handleCategoryChange(roi.id, value)}
                             // size="sm"
                           >
-                            <SelectTrigger className="w-full">
+                            <SelectTrigger className="w-full text-left">
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                             <SelectContent>
@@ -640,9 +640,9 @@ const Home = () => {
                           </Select>
                           <Button 
                             onClick={() => handleDiscard(roi.id)}
-                            variant="outline"
+                            variant="destructive"
                             size="sm"
-                            className="w-full"
+                            className="w-full text-s py-1 transition-colors duration-200"
                           >
                             <X className="w-4 h-4 mr-2" />
                             Discard
@@ -661,7 +661,7 @@ const Home = () => {
                 <h2 className="text-xl font-semibold">Export ROIs</h2>
                 <Button 
                   onClick={() => handleExport(savedROIs, setExportStatus)}
-                  className="w-full"
+                  className="w-full bg-green-500 hover:bg-green-600"
                 >
                   <Check className="w-4 h-4 mr-2" />
                   Export ROIs
