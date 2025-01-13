@@ -436,11 +436,11 @@ export default function ROISelector() {
           )
         )
 
-        // const dbResponse = await fetch('/api/db-roi', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify(roi)
-        // })
+        await fetch('/api/db-roi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...roi, ...{imageName} })
+        })
 
         // console.log('DB response:', await dbResponse.json())
 
