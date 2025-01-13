@@ -14,7 +14,8 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: Request) {
   try {
-    const { imageData, category, imageName } = await request.json()
+    const requestData = await request.json()
+    const { imageData, category, imageName } = requestData
     
     // Convert base64 to buffer
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '')
@@ -36,6 +37,8 @@ export async function POST(request: Request) {
 
     if (uploadError) throw uploadError
 
+  // console.log({requestData})
+          
     const { data: { publicUrl } } = supabaseAdmin
       .storage
       .from('roi-images')

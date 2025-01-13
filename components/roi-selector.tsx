@@ -435,6 +435,15 @@ export default function ROISelector() {
               : prevRoi
           )
         )
+
+        const dbResponse = await fetch('/api/db-roi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(roi)
+        })
+
+        console.log('DB response:', await dbResponse.json())
+
         
         setStatus(`Exported ${index + 1}/${categorizedROIs.length}`)
       }
