@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Upload, ImageIcon, Check, X } from 'lucide-react'
 import { Layout } from '@/components/Layout'
@@ -539,33 +538,19 @@ const Home = () => {
 
   return (
     <Layout>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Upload and Image Display */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Upload Section */}
-          <Card>
-            <CardContent className="p-6">
+      <div className="flex flex-col space-y-6">
+        {/* File Upload Section */}
+        <Card className="overflow-hidden">
+          <CardContent className="p-6">
+            {!imageUrl ? (
               <Label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors duration-200">
                 <Upload className="w-12 h-12 text-gray-400 mb-4" />
                 <span className="text-sm font-medium text-gray-600">Upload Image</span>
                 <span className="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</span>
               </Label>
-              <Input
-                id="file-upload"
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                ref={fileInputRef}
-                className="hidden"
-              />
-            </CardContent>
-          </Card>
-
-          {/* Image Container */}
-          <Card className="overflow-hidden">
-            <CardContent className="p-0">
-              {imageUrl ? (
-                <div className="relative w-full aspect-video">
+            ) : (
+              <div className="flex flex-col">
+                <div className="relative aspect-video w-full">
                   <Image
                     src={imageUrl}
                     alt="Uploaded image"
@@ -585,89 +570,108 @@ const Home = () => {
                     }`}
                   />
                 </div>
-              ) : (
-                <div className="aspect-video flex items-center justify-center bg-gray-100 text-gray-400">
-                  <ImageIcon className="w-16 h-16" />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                <Button
+                  onClick={() => {
+                    setImageUrl(null);
+                    setSavedROIs([]);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="mt-4 self-start"
+                >
+                  Remove Image
+                </Button>
+              </div>
+            )}
+            <Input
+              id="file-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              ref={fileInputRef}
+              className="hidden"
+            />
+          </CardContent>
+        </Card>
 
-        {/* Right Column: ROI Grid and Export */}
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Regions of Interest</h2>
-              <ScrollArea className="h-[50vh]">
-                <div className="grid grid-cols-2 gap-4">
-                  {savedROIs.map(roi => (
-                    <Card
-                      key={roi.id}
-                      className={`overflow-hidden transition-all duration-200 ${
-                        roi.id === selectedROI ? 'ring-2 ring-blue-500' : ''
-                      }`}
-                    >
-                      <CardContent className="p-3 space-y-2">
-                      {typeof roi.dataUrl === 'string' && roi.dataUrl && (
-                          <div className="aspect-square relative overflow-hidden rounded-md">
-                            <Image
-                              src={roi.dataUrl}
-                              alt={`ROI ${roi.id}`}
-                              layout="fill"
-                              objectFit="cover"
-                            />
-                          </div>
-                        )}
-                        <Select
-                          value={roi.category || ''}
-                          onValueChange={(value) => handleCategoryChange(roi.id, value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="team_A/player">Team A Player</SelectItem>
-                            <SelectItem value="team_A/goalkeeper">Team A Goalkeeper</SelectItem>
-                            <SelectItem value="team_B/player">Team B Player</SelectItem>
-                            <SelectItem value="team_B/goalkeeper">Team B Goalkeeper</SelectItem>
-                            <SelectItem value="referee/referee">Referee</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button 
-                          onClick={() => handleDiscard(roi.id)}
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                        >
-                          <X className="w-4 h-4 mr-2" />
-                          Discard
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+        {/* Regions of Interest and Export Sections */}
+        {imageUrl && (
+          <div className="space-y-6">
+            {/* Regions of Interest */}
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="text-xl font-semibold mb-4">Regions of Interest</h2>
+                <ScrollArea className="h-[50vh]">
+                  <div className="grid grid-cols-3 gap-4">
+                    {savedROIs.map(roi => (
+                      <Card
+                        key={roi.id}
+                        className={`overflow-hidden transition-all duration-200 ${
+                          roi.id === selectedROI ? 'ring-2 ring-blue-500' : ''
+                        }`}
+                      >
+                        <CardContent className="p-3 space-y-2">
+                          {typeof roi.dataUrl === 'string' && roi.dataUrl && (
+                            <div className="aspect-square relative overflow-hidden rounded-md">
+                              <Image
+                                src={roi.dataUrl}
+                                alt={`ROI ${roi.id}`}
+                                layout="fill"
+                                objectFit="cover"
+                              />
+                            </div>
+                          )}
+                          <Select
+                            value={roi.category || ''}
+                            onValueChange={(value) => handleCategoryChange(roi.id, value)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="team_A/player">Team A Player</SelectItem>
+                              <SelectItem value="team_A/goalkeeper">Team A Goalkeeper</SelectItem>
+                              <SelectItem value="team_B/player">Team B Player</SelectItem>
+                              <SelectItem value="team_B/goalkeeper">Team B Goalkeeper</SelectItem>
+                              <SelectItem value="referee/referee">Referee</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button 
+                            onClick={() => handleDiscard(roi.id)}
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Discard
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
 
-          {/* Export Section */}
-          <Card>
-            <CardContent className="p-6 space-y-4">
-              <h2 className="text-xl font-semibold">Export ROIs</h2>
-              <Button 
-                onClick={() => handleExport(savedROIs, setExportStatus)}
-                className="w-full"
-              >
-                <Check className="w-4 h-4 mr-2" />
-                Export ROIs
-              </Button>
-              {exportStatus && (
-                <p className="text-sm text-gray-600 animate-fade-in">{exportStatus}</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+            {/* Export ROIs */}
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                <h2 className="text-xl font-semibold">Export ROIs</h2>
+                <Button 
+                  onClick={() => handleExport(savedROIs, setExportStatus)}
+                  className="w-full"
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  Export ROIs
+                </Button>
+                {exportStatus && (
+                  <p className="text-sm text-gray-600 animate-fade-in">{exportStatus}</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </Layout>
   )
