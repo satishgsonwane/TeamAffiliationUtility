@@ -1,39 +1,31 @@
 // app/api/export-roi/route.ts
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
-import os from 'os';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase URL or Key');
+}
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(req: Request) {
   try {
-    const { imageData, category } = await req.json();
-    
-    // Get Desktop path
-    const desktopPath = path.join(os.homedir(), 'Desktop');
-    
-    // Base directory path on Desktop
-    const baseDir = path.join(desktopPath, 'Team_jersey_data');
-    
-    // Create full category path
-    const categoryPath = path.join(baseDir, category);
-    
-    // Ensure directory exists
-    await mkdir(categoryPath, { recursive: true });
-    
-    // Create filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `${timestamp}.png`;
-    const filepath = path.join(categoryPath, filename);
-    
-    // Convert base64 to buffer and save
-    const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
-    
-    await writeFile(filepath, buffer);
-    
-    return NextResponse.json({ success: true, filepath });
+    const { userId, imageName, x, y, width, height, category, dataUrl } = await req.json();
+
+    const { data, error } = await supabase
+      .from('rois')
+      .insert([
+        { user_id: userId, image_name: imageName, x, y, width, height, category, data_url: dataUrl }
+      ]);
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({ success: true, data });
   } catch (error) {
-    console.error('Export error:', error);
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    console.error('Error saving ROI:', error);
+    return NextResponse.json({ success: false, error: (error as Error).message });
   }
 }

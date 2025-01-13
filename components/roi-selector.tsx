@@ -12,6 +12,8 @@ export interface ROI {
   height: number
   category: string | null
   dataUrl: string | null
+  userId: string
+  imageName: string
 }
 
 type ResizeHandle = 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
@@ -28,6 +30,58 @@ const HANDLE_INTERACTION_SIZE = 10
 const STICKY_FACTOR = 2
 const CAPTURE_PADDING = 5 // New constant for ROI capture padding
 
+const handleExport = async (savedROIs: ROI[], setExportStatus: (status: string) => void) => {
+  setExportStatus('Starting export...');
+
+  const categorizedROIs = savedROIs.filter(roi => roi.category && roi.dataUrl);
+  const uncategorizedCount = savedROIs.length - categorizedROIs.length;
+
+  if (uncategorizedCount > 0) {
+    setExportStatus(`Warning: ${uncategorizedCount} uncategorized ROIs will be skipped.`);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+
+  let exportedCount = 0;
+  const totalToExport = categorizedROIs.length;
+
+  try {
+    for (const roi of categorizedROIs) {
+      if (roi.dataUrl) {
+        const response = await fetch('/api/save-roi', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: roi.userId, // Ensure this is a valid UUID
+            imageName: roi.imageName,
+            x: roi.x,
+            y: roi.y,
+            width: roi.width,
+            height: roi.height,
+            category: roi.category,
+            dataUrl: roi.dataUrl,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to save ROI ${roi.id}`);
+        }
+
+        exportedCount++;
+        setExportStatus(`Exported ${exportedCount}/${totalToExport}`);
+      }
+    }
+
+    setExportStatus(`Successfully exported ${exportedCount} ROIs!`);
+    setTimeout(() => setExportStatus(''), 3000);
+  } catch (error) {
+    console.error('Export failed:', error);
+    setExportStatus('Export failed. Check console for details.');
+    setTimeout(() => setExportStatus(''), 5000);
+  }
+};
+
 export default function ROISelector() {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 })
@@ -38,6 +92,7 @@ export default function ROISelector() {
   const [activeHandle, setActiveHandle] = useState<ResizeHandle | null>(null)
   const [isResizing, setIsResizing] = useState(false)
   const [hoveringHandle, setHoveringHandle] = useState<ResizeHandle | null>(null)
+  const [exportStatus, setExportStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -307,12 +362,18 @@ export default function ROISelector() {
         { width: imageDimensions.width, height: imageDimensions.height }
       )
 
-      captureROIImage(constrainedROI).then(dataUrl => {
+      captureROIImage({
+        ...constrainedROI,
+        userId: '39874461-8110-47a3-90a1-5250f4a414fc', // Replace with actual userId
+        imageName: 'defaultImageName' // Replace with actual imageName
+      }).then(dataUrl => {
         setSavedROIs(prev => [...prev, { 
           id: Date.now(), 
           ...constrainedROI, 
           category: null, 
-          dataUrl 
+          dataUrl,
+          userId: '39874461-8110-47a3-90a1-5250f4a414fc', // Replace with actual userId
+          imageName: 'defaultImageName' // Replace with actual imageName
         }])
       })
     }
@@ -398,64 +459,6 @@ export default function ROISelector() {
       .replace('T', '_')
       .replace('Z', '');
   }
-
-  const [exportStatus, setExportStatus] = useState<string>('');
-
-  const handleExport = async () => {
-    setExportStatus('Starting export...');
-  
-    const categorizedROIs = savedROIs.filter(roi => roi.category && roi.dataUrl);
-    const uncategorizedCount = savedROIs.length - categorizedROIs.length;
-  
-    // Show warning with Badge component
-    if (uncategorizedCount > 0) {
-      setExportStatus(
-        `Warning: ${uncategorizedCount} uncategorized ROIs will be skipped.`
-      );
-      // Add visual delay with styled loading state
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-  
-    let exportedCount = 0;
-    const totalToExport = categorizedROIs.length;
-  
-    try {
-      for (const roi of categorizedROIs) {
-        if (roi.dataUrl) {
-          const timestamp = formatTimestamp(new Date());
-  
-          const filename = `${timestamp}_${roi.id}.png`;
-  
-          const response = await fetch('/api/save-roi', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              imageData: roi.dataUrl,
-              category: roi.category,
-              filename,
-            }),
-          });
-  
-          if (!response.ok) {
-            throw new Error(`Failed to save ROI ${roi.id}`);
-          }
-  
-          exportedCount++;
-          setExportStatus(`Exported ${exportedCount}/${totalToExport}`);
-        }
-      }
-  
-      setExportStatus(`Successfully exported ${exportedCount} ROIs!`);
-      setTimeout(() => setExportStatus(''), 3000);
-  
-    } catch (error) {
-      console.error('Export failed:', error);
-      setExportStatus('Export failed. Check console for details.');
-      setTimeout(() => setExportStatus(''), 5000);
-    }
-  };
 
   const drawResizeHandles = (ctx: CanvasRenderingContext2D, roi: ROI) => {
     const handles = {
@@ -648,7 +651,7 @@ export default function ROISelector() {
         {/* Export Section */}
         <div className="flex items-center justify-center gap-4 pt-4">
           <Button 
-            onClick={handleExport}
+            onClick={() => handleExport(savedROIs, setExportStatus)}
             className="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg 
               shadow-md hover:shadow-lg transition-all duration-200"
           >
