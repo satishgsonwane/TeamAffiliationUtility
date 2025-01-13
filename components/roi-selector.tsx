@@ -39,11 +39,10 @@ const handleExport = async (savedROIs: ROI[], setExportStatus: (status: string) 
     for (const [index, roi] of categorizedROIs.entries()) {
       const imageName = generateImageName(roi.category!, index)
       
+      // Upload image
       const response = await fetch('/api/upload-roi', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageData: roi.dataUrl,
           category: roi.category,
@@ -51,13 +50,9 @@ const handleExport = async (savedROIs: ROI[], setExportStatus: (status: string) 
         })
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Upload failed')
-      }
+      if (!response.ok) throw new Error('Upload failed')
       
       const { url } = await response.json()
-      // Store URL in database if needed
       
       setExportStatus(`Exported ${index + 1}/${categorizedROIs.length}`)
     }
@@ -66,8 +61,8 @@ const handleExport = async (savedROIs: ROI[], setExportStatus: (status: string) 
     setTimeout(() => setExportStatus(''), 3000)
   } catch (error) {
     console.error('Export error:', error)
-    setExportStatus(`Export failed: ${(error as Error).message}`)
-    setTimeout(() => setExportStatus(''), 5000)
+    setExportStatus('Export failed')
+    setTimeout(() => setExportStatus(''), 3000)
   }
 }
 
