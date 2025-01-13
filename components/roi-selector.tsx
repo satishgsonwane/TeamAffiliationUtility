@@ -406,56 +406,65 @@ export default function ROISelector() {
     const categorizedROIs = rois.filter(roi => roi.category && roi.dataUrl)
     
     try {
-      for (const [index, roi] of categorizedROIs.entries()) {
-        const timestamp = formatTimestamp(new Date())
-        const imageName = generateImageName(roi.category!, index, timestamp)
-        
-        console.log(`Exporting ROI `, {imageName, roi})
-
-        // Upload image
-        const response = await fetch('/api/upload-roi', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageData: roi.dataUrl,
-            category: roi.category,
-            imageName
-          })
-        })
-  
-        if (!response.ok) throw new Error('Upload failed')
-        
-        const { url: imageUrl } = await response.json()
-        
-        // Update ROI with storage URL
-        setSavedROIs(prevROIs => 
-          prevROIs.map(prevRoi => 
-            prevRoi.id === roi.id 
-              ? { ...prevRoi, dataUrl: imageUrl } 
-              : prevRoi
-          )
-        )
-
-        await fetch('/api/db-roi', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...roi, ...{imageName} })
-        })
-
-        // console.log('DB response:', await dbResponse.json())
-
-        
-        setStatus(`Exported ${index + 1}/${categorizedROIs.length}`)
-      }
-  
-      setStatus('Export complete!')
-      setTimeout(() => setStatus(''), 3000)
+        for (const [index, roi] of categorizedROIs.entries()) {
+            const timestamp = formatTimestamp(new Date())
+            const imageName = generateImageName(roi.category!, index, timestamp)
+            
+            // Original ROI for image upload
+            const imageUploadData = {
+                imageData: roi.dataUrl,
+                category: roi.category,
+                imageName
+            }
+ 
+            // Normalized ROI for database
+            const normalizedROI = {
+                ...roi,
+                x: roi.x / imageDimensions.width,
+                y: roi.y / imageDimensions.height, 
+                // width: roi.width / imageDimensions.width,
+                // height: roi.height / imageDimensions.height,
+                imageName
+            }
+ 
+            // Upload image
+            const response = await fetch('/api/upload-roi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(imageUploadData)
+            })
+ 
+            if (!response.ok) throw new Error('Upload failed')
+            
+            const { url: imageUrl } = await response.json()
+            
+            // Update ROI with storage URL
+            setSavedROIs(prevROIs => 
+                prevROIs.map(prevRoi => 
+                    prevRoi.id === roi.id 
+                        ? { ...prevRoi, dataUrl: imageUrl } 
+                        : prevRoi
+                )
+            )
+ 
+            // Save normalized coordinates to database
+            await fetch('/api/db-roi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(normalizedROI)
+            })
+            
+            setStatus(`Exported ${index + 1}/${categorizedROIs.length}`)
+        }
+ 
+        setStatus('Export complete!')
+        setTimeout(() => setStatus(''), 3000)
     } catch (error) {
-      console.error('Export error:', error)
-      setStatus('Export failed')
-      setTimeout(() => setStatus(''), 3000)
+        console.error('Export error:', error)
+        setStatus('Export failed')
+        setTimeout(() => setStatus(''), 3000)
     }
-  }
+ }
 
   const handleCategoryChange = (roiId: number, category: string) => {
     setSavedROIs(prev => prev.map(roi => 
