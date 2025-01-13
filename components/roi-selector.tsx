@@ -30,57 +30,28 @@ const HANDLE_INTERACTION_SIZE = 10
 const STICKY_FACTOR = 2
 const CAPTURE_PADDING = 5 // New constant for ROI capture padding
 
-const handleExport = async (savedROIs: ROI[], setExportStatus: (status: string) => void) => {
-  setExportStatus('Starting export...')
-  
-  const categorizedROIs = savedROIs.filter(roi => roi.category && roi.dataUrl)
-  
-  try {
-    for (const [index, roi] of categorizedROIs.entries()) {
-      const imageName = generateImageName(roi.category!, index)
-      
-      // Upload image
-      const response = await fetch('/api/upload-roi', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageData: roi.dataUrl,
-          category: roi.category,
-          imageName
-        })
-      })
-
-      if (!response.ok) throw new Error('Upload failed')
-      
-      const { url } = await response.json()
-      
-      setExportStatus(`Exported ${index + 1}/${categorizedROIs.length}`)
-    }
-
-    setExportStatus('Export complete!')
-    setTimeout(() => setExportStatus(''), 3000)
-  } catch (error) {
-    console.error('Export error:', error)
-    setExportStatus('Export failed')
-    setTimeout(() => setExportStatus(''), 3000)
-  }
+const generateImageName = (category: string, index: number, timestamp: string) => {
+  return `${category}_${timestamp}_${index}`
 }
 
-const generateImageName = (category: string, index: number) => {
-  return `${category}_${Date.now()}_${index}`
+const formatTimestamp = (date: Date): string => {
+  return date.toISOString()
+    .replace(/[:.]/g, '-')
+    .replace('T', '_')
+    .replace('Z', '');
 }
 
 export default function ROISelector() {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 })
-  const [savedROIs, setSavedROIs] = useState<ROI[]>([])
   const [currentROI, setCurrentROI] = useState<{ x: number, y: number, width: number, height: number } | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [selectedROI, setSelectedROI] = useState<number | null>(null)
+  const [savedROIs, setSavedROIs] = useState<ROI[]>([])
+  const [exportStatus, setStatus] = useState<string>('')
   const [activeHandle, setActiveHandle] = useState<ResizeHandle | null>(null)
   const [isResizing, setIsResizing] = useState(false)
   const [hoveringHandle, setHoveringHandle] = useState<ResizeHandle | null>(null)
-  const [exportStatus, setExportStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -429,6 +400,52 @@ export default function ROISelector() {
     return null;
   }
 
+  const handleExport = async (rois: ROI[], setStatus: (status: string) => void) => {
+    setStatus('Starting export...')
+    
+    const categorizedROIs = rois.filter(roi => roi.category && roi.dataUrl)
+    
+    try {
+      for (const [index, roi] of categorizedROIs.entries()) {
+        const timestamp = formatTimestamp(new Date())
+        const imageName = generateImageName(roi.category!, index, timestamp)
+        
+        // Upload image
+        const response = await fetch('/api/upload-roi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageData: roi.dataUrl,
+            category: roi.category,
+            imageName
+          })
+        })
+  
+        if (!response.ok) throw new Error('Upload failed')
+        
+        const { url: imageUrl } = await response.json()
+        
+        // Update ROI with storage URL
+        setSavedROIs(prevROIs => 
+          prevROIs.map(prevRoi => 
+            prevRoi.id === roi.id 
+              ? { ...prevRoi, dataUrl: imageUrl } 
+              : prevRoi
+          )
+        )
+        
+        setStatus(`Exported ${index + 1}/${categorizedROIs.length}`)
+      }
+  
+      setStatus('Export complete!')
+      setTimeout(() => setStatus(''), 3000)
+    } catch (error) {
+      console.error('Export error:', error)
+      setStatus('Export failed')
+      setTimeout(() => setStatus(''), 3000)
+    }
+  }
+
   const handleCategoryChange = (roiId: number, category: string) => {
     setSavedROIs(prev => prev.map(roi => 
       roi.id === roiId ? { ...roi, category } : roi
@@ -441,13 +458,6 @@ export default function ROISelector() {
       setSelectedROI(null)
     }
   }
-  const formatTimestamp = (date: Date): string => {
-    return date.toISOString()
-      .replace(/[:.]/g, '-')
-      .replace('T', '_')
-      .replace('Z', '');
-  }
-
   const drawResizeHandles = (ctx: CanvasRenderingContext2D, roi: ROI) => {
     const handles = {
       topLeft: { x: roi.x, y: roi.y },
@@ -639,7 +649,7 @@ export default function ROISelector() {
         {/* Export Section */}
         <div className="flex items-center justify-center gap-4 pt-4">
           <Button 
-            onClick={() => handleExport(savedROIs, setExportStatus)}
+            onClick={() => handleExport(savedROIs, setStatus)}
             className="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg 
               shadow-md hover:shadow-lg transition-all duration-200"
           >
@@ -653,3 +663,4 @@ export default function ROISelector() {
     </div>
   )
 }
+
