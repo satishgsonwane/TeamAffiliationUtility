@@ -442,7 +442,7 @@ export default function ROISelector() {
           body: JSON.stringify(roi)
         })
 
-        console.log('DB response:', await dbResponse.json())
+        // console.log('DB response:', await dbResponse.json())
 
         
         setStatus(`Exported ${index + 1}/${categorizedROIs.length}`)
