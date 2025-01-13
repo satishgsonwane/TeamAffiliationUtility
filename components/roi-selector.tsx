@@ -3,6 +3,14 @@
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Upload, ImageIcon, Check, X } from 'lucide-react'
+import { Layout } from '@/components/Layout'
 
 export interface ROI {
   id: number
@@ -28,7 +36,7 @@ const MIN_ROI_SIZE = 20
 const HANDLE_SIZE = 16
 const HANDLE_INTERACTION_SIZE = 10
 const STICKY_FACTOR = 2
-const CAPTURE_PADDING = 5 // New constant for ROI capture padding
+const CAPTURE_PADDING = 5
 
 const generateImageName = (category: string, index: number, timestamp: string) => {
   return `${category}_${timestamp}_${index}`
@@ -41,19 +49,19 @@ const formatTimestamp = (date: Date): string => {
     .replace('Z', '');
 }
 
-export default function ROISelector() {
+const Home = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 })
   const [currentROI, setCurrentROI] = useState<{ x: number, y: number, width: number, height: number } | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [selectedROI, setSelectedROI] = useState<number | null>(null)
   const [savedROIs, setSavedROIs] = useState<ROI[]>([])
-  const [exportStatus, setStatus] = useState<string>('')
+  const [exportStatus, setExportStatus] = useState<string>('')
   const [activeHandle, setActiveHandle] = useState<ResizeHandle | null>(null)
   const [isResizing, setIsResizing] = useState(false)
   const [hoveringHandle, setHoveringHandle] = useState<ResizeHandle | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handles: Record<ResizeHandle, HandleInfo> = {
     topLeft: { x: 0, y: 0, cursor: 'nw-resize' },
@@ -61,6 +69,7 @@ export default function ROISelector() {
     bottomLeft: { x: 0, y: 0, cursor: 'sw-resize' },
     bottomRight: { x: 0, y: 0, cursor: 'se-resize' }
   }
+
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -101,12 +110,10 @@ export default function ROISelector() {
       bottomRight: { x: roi.x + roi.width, y: roi.y + roi.height }
     };
 
-    // Increase sticky area when already interacting
     const currentSize = (hoveringHandle || isResizing) ? 
       handleSize * STICKY_FACTOR : 
       handleSize;
 
-    // Check current handle first if we're hovering or resizing
     if (hoveringHandle || activeHandle) {
       const currentHandle = hoveringHandle || activeHandle;
       if (currentHandle) {
@@ -118,7 +125,6 @@ export default function ROISelector() {
       }
     }
 
-    // Check other handles only if we're not already interacting
     if (!isResizing) {
       for (const [handle, pos] of Object.entries(handles)) {
         if (Math.abs(x - pos.x) <= handleSize && 
@@ -145,11 +151,9 @@ export default function ROISelector() {
   ): Pick<ROI, 'x' | 'y' | 'width' | 'height'> => {
     const pad = CAPTURE_PADDING
     
-    // First constrain position
     const x = Math.max(pad, Math.min(roi.x, bounds.width - roi.width - pad))
     const y = Math.max(pad, Math.min(roi.y, bounds.height - roi.height - pad))
   
-    // Then constrain size based on new position
     const width = Math.max(
       MIN_ROI_SIZE,
       Math.min(roi.width, bounds.width - x - pad)
@@ -165,13 +169,11 @@ export default function ROISelector() {
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getScaledCoordinates(e);
 
-    // Check if clicking on existing ROI
     const clickedROIIndex = savedROIs.findIndex(roi => isInsideROI(x, y, roi));
     
     if (clickedROIIndex !== -1) {
       const roi = savedROIs[clickedROIIndex];
       
-      // First check for handle interaction
       const handle = getResizeHandle(x, y, roi);
       if (handle) {
         setIsResizing(true);
@@ -181,12 +183,10 @@ export default function ROISelector() {
         return;
       }
       
-      // If no handle, select the ROI
       setSelectedROI(roi.id);
       return;
     }
 
-    // Start drawing new ROI
     setIsResizing(false);
     setActiveHandle(null);
     setHoveringHandle(null);
@@ -199,13 +199,11 @@ export default function ROISelector() {
     const { x, y } = getScaledCoordinates(e);
     const canvas = e.currentTarget;
     
-    // Handle cursor and hover states when not actively drawing or resizing
     if (!isResizing && !isDrawing) {
       const roi = selectedROI ? savedROIs.find(r => r.id === selectedROI) : null;
       if (roi) {
         const handle = getResizeHandle(x, y, roi);
         
-        // Only update hovering state if cursor shape would change
         const newCursor = handle ? handles[handle].cursor : 
                         isInsideROI(x, y, roi) ? 'move' : 'crosshair';
         
@@ -221,7 +219,6 @@ export default function ROISelector() {
       }
     }
   
-    // Handle resizing
     if (isResizing && selectedROI !== null) {
       const roi = savedROIs.find(r => r.id === selectedROI)
       if (!roi || !activeHandle) return
@@ -232,11 +229,10 @@ export default function ROISelector() {
   
       switch (activeHandle) {
         case 'topLeft':
-          // Account for padding when calculating new dimensions
           newROI.width += newROI.x - x
           newROI.height += newROI.y - y
-          newROI.x = Math.max(padX, x) // Ensure x doesn't go below padding
-          newROI.y = Math.max(padY, y) // Ensure y doesn't go below padding
+          newROI.x = Math.max(padX, x)
+          newROI.y = Math.max(padY, y)
           break;
           
         case 'topRight':
@@ -257,7 +253,6 @@ export default function ROISelector() {
           break;
       }
   
-      // Apply minimum size constraints
       if (newROI.width < MIN_ROI_SIZE) {
         if (['topLeft', 'bottomLeft'].includes(activeHandle)) {
           newROI.x = roi.x + roi.width - MIN_ROI_SIZE
@@ -272,7 +267,6 @@ export default function ROISelector() {
         newROI.height = MIN_ROI_SIZE
       }
   
-      // Ensure ROI stays within bounds while maintaining minimum size
       const constrainedROI = constrainToBounds(
         constrainROISize(newROI),
         { 
@@ -287,7 +281,6 @@ export default function ROISelector() {
       return
     }
   
-    // Handle drawing new ROI
     if (isDrawing && currentROI) {
       setCurrentROI(prev => prev ? {
         ...prev,
@@ -323,16 +316,16 @@ export default function ROISelector() {
 
       captureROIImage({
         ...constrainedROI,
-        userId: '39874461-8110-47a3-90a1-5250f4a414fc', // Replace with actual userId
-        imageName: 'defaultImageName' // Replace with actual imageName
+        userId: '39874461-8110-47a3-90a1-5250f4a414fc',
+        imageName: 'defaultImageName'
       }).then(dataUrl => {
         setSavedROIs(prev => [...prev, { 
           id: Date.now(), 
           ...constrainedROI, 
           category: null, 
           dataUrl,
-          userId: '39874461-8110-47a3-90a1-5250f4a414fc', // Replace with actual userId
-          imageName: 'defaultImageName' // Replace with actual imageName
+          userId: '39874461-8110-47a3-90a1-5250f4a414fc',
+          imageName: 'defaultImageName'
         }])
       })
     }
@@ -340,6 +333,7 @@ export default function ROISelector() {
     setIsDrawing(false)
     setCurrentROI(null)
   }
+
   const updateROIDataUrl = async (roiId: number) => {
     const roi = savedROIs.find(r => r.id === roiId)
     if (!roi) return
@@ -351,7 +345,6 @@ export default function ROISelector() {
   }
 
   const captureROIImage = async (roi: Omit<ROI, 'id' | 'category' | 'dataUrl'>) => {
-    // Create temporary canvas with padding for capture
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = roi.width + (CAPTURE_PADDING * 2);
     tempCanvas.height = roi.height + (CAPTURE_PADDING * 2);
@@ -362,7 +355,6 @@ export default function ROISelector() {
       img.src = imageUrl;
       await new Promise(resolve => { img.onload = resolve });
       
-      // Draw with padding to avoid border
       tempCtx.drawImage(
         img,
         roi.x - CAPTURE_PADDING,
@@ -375,14 +367,12 @@ export default function ROISelector() {
         roi.height + (CAPTURE_PADDING * 2)
       );
 
-      // Create final canvas with exact ROI size
       const finalCanvas = document.createElement('canvas');
       finalCanvas.width = roi.width;
       finalCanvas.height = roi.height;
       const finalCtx = finalCanvas.getContext('2d');
 
       if (finalCtx) {
-        // Draw the padded image onto final canvas, cropping out the padding
         finalCtx.drawImage(
           tempCanvas,
           CAPTURE_PADDING,
@@ -410,24 +400,19 @@ export default function ROISelector() {
             const timestamp = formatTimestamp(new Date())
             const imageName = generateImageName(roi.category!, index, timestamp)
             
-            // Original ROI for image upload
             const imageUploadData = {
                 imageData: roi.dataUrl,
                 category: roi.category,
                 imageName
             }
  
-            // Normalized ROI for database
             const normalizedROI = {
                 ...roi,
                 x: roi.x / imageDimensions.width,
                 y: roi.y / imageDimensions.height, 
-                // width: roi.width / imageDimensions.width,
-                // height: roi.height / imageDimensions.height,
                 imageName
             }
  
-            // Upload image
             const response = await fetch('/api/upload-roi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -438,7 +423,6 @@ export default function ROISelector() {
             
             const { url: imageUrl } = await response.json()
             
-            // Update ROI with storage URL
             setSavedROIs(prevROIs => 
                 prevROIs.map(prevRoi => 
                     prevRoi.id === roi.id 
@@ -447,7 +431,6 @@ export default function ROISelector() {
                 )
             )
  
-            // Save normalized coordinates to database
             await fetch('/api/db-roi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -478,6 +461,7 @@ export default function ROISelector() {
       setSelectedROI(null)
     }
   }
+
   const drawResizeHandles = (ctx: CanvasRenderingContext2D, roi: ROI) => {
     const handles = {
       topLeft: { x: roi.x, y: roi.y },
@@ -490,7 +474,6 @@ export default function ROISelector() {
     ctx.shadowBlur = 8
 
     Object.entries(handles).forEach(([, pos]) => {
-      // Draw outer circle (white with blue border)
       ctx.beginPath()
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
       ctx.strokeStyle = '#2196F3'
@@ -498,14 +481,13 @@ export default function ROISelector() {
       ctx.fill()
       ctx.stroke()
       
-      // Draw inner dot (blue)
       ctx.beginPath()
       ctx.fillStyle = '#2196F3'
       ctx.arc(pos.x, pos.y, HANDLE_SIZE/4, 0, Math.PI * 2)
       ctx.fill()
     })
   }
-  // Effects for image loading and canvas rendering
+
   useEffect(() => {
     if (imageUrl && canvasRef.current) {
       const img = new window.Image()
@@ -556,131 +538,140 @@ export default function ROISelector() {
   }, [imageUrl, savedROIs, currentROI, selectedROI])
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Header Section */}
-        <header className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-gray-800 tracking-tight">ROI Selector</h1>
-          <p className="text-gray-600 text-lg">Select and categorize regions of interest in your image</p>
-        </header>
-
-        {/* Upload Section */}
-        <div className="flex justify-center">
-          <label 
-            htmlFor="file-upload" 
-            className="cursor-pointer inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 
-              text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Upload Image
-          </label>
-          <input
-            id="file-upload"
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            ref={fileInputRef}
-            className="hidden"
-          />
-        </div>
-
-        {/* Image Container */}
-        <div className="bg-white rounded-xl shadow-lg p-6 min-h-[400px] flex items-center justify-center
-          border border-gray-200 transition-all duration-200">
-          {imageUrl ? (
-            <div className="relative w-full">
-              <Image
-                src={imageUrl}
-                alt="Uploaded image"
-                width={imageDimensions.width}
-                height={imageDimensions.height}
-                className="max-w-full h-auto rounded-md"
+    <Layout>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Upload and Image Display */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Upload Section */}
+          <Card>
+            <CardContent className="p-6">
+              <Label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors duration-200">
+                <Upload className="w-12 h-12 text-gray-400 mb-4" />
+                <span className="text-sm font-medium text-gray-600">Upload Image</span>
+                <span className="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</span>
+              </Label>
+              <Input
+                id="file-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                ref={fileInputRef}
+                className="hidden"
               />
-              <canvas
-                ref={canvasRef}
-                width={imageDimensions.width}
-                height={imageDimensions.height}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                className={`absolute top-0 left-0 w-full h-full ${
-                  activeHandle ? handles[activeHandle].cursor : 'cursor-crosshair'
-                }`}
-              />
-            </div>
-          ) : (
-            <div className="text-gray-400 text-center">
-              <svg className="mx-auto h-12 w-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <p>Upload an image to begin</p>
-            </div>
-          )}
-        </div>
+            </CardContent>
+          </Card>
 
-        {/* ROI Grid */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-          {savedROIs.map(roi => (
-            <div
-              key={roi.id}
-              className={`
-                p-3 rounded-lg border transition-all duration-200
-                hover:shadow-md max-w-[160px]
-                ${roi.id === selectedROI 
-                  ? 'border-blue-500 bg-blue-50 shadow-md' 
-                  : 'border-gray-200 bg-white'}
-              `}
-            >
-              {roi.dataUrl && (
-                <div className="overflow-hidden rounded-md mb-2">
-                  <img
-                    src={roi.dataUrl}
-                    alt={`ROI ${roi.id}`}
-                    className="w-full h-20 object-contain"
+          {/* Image Container */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              {imageUrl ? (
+                <div className="relative w-full aspect-video">
+                  <Image
+                    src={imageUrl}
+                    alt="Uploaded image"
+                    layout="fill"
+                    objectFit="contain"
+                    className="rounded-lg"
+                  />
+                  <canvas
+                    ref={canvasRef}
+                    width={imageDimensions.width}
+                    height={imageDimensions.height}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    className={`absolute top-0 left-0 w-full h-full ${
+                      activeHandle ? handles[activeHandle].cursor : 'cursor-crosshair'
+                    }`}
                   />
                 </div>
+              ) : (
+                <div className="aspect-video flex items-center justify-center bg-gray-100 text-gray-400">
+                  <ImageIcon className="w-16 h-16" />
+                </div>
               )}
-              <select 
-                value={roi.category || ''} 
-                onChange={(e) => handleCategoryChange(roi.id, e.target.value)}
-                className="w-full p-1.5 mb-1.5 border rounded text-xs bg-white hover:border-gray-400 
-                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-              >
-                <option value="">Select category</option>
-                <option value="team_A/player">Team A Player</option>
-                <option value="team_A/goalkeeper">Team A Goalkeeper</option>
-                <option value="team_B/player">Team B Player</option>
-                <option value="team_B/goalkeeper">Team B Goalkeeper</option>
-                <option value="referee/referee">Referee</option>
-              </select>
-              <Button 
-                onClick={() => handleDiscard(roi.id)} 
-                variant="destructive" 
-                className="w-full text-xs py-1 transition-colors duration-200"
-              >
-                Discard
-              </Button>
-            </div>
-          ))}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Export Section */}
-        <div className="flex items-center justify-center gap-4 pt-4">
-          <Button 
-            onClick={() => handleExport(savedROIs, setStatus)}
-            className="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg 
-              shadow-md hover:shadow-lg transition-all duration-200"
-          >
-            Export ROIs
-          </Button>
-          {exportStatus && (
-            <span className="text-sm text-gray-600 animate-fade-in">{exportStatus}</span>
-          )}
+        {/* Right Column: ROI Grid and Export */}
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Regions of Interest</h2>
+              <ScrollArea className="h-[50vh]">
+                <div className="grid grid-cols-2 gap-4">
+                  {savedROIs.map(roi => (
+                    <Card
+                      key={roi.id}
+                      className={`overflow-hidden transition-all duration-200 ${
+                        roi.id === selectedROI ? 'ring-2 ring-blue-500' : ''
+                      }`}
+                    >
+                      <CardContent className="p-3 space-y-2">
+                      {typeof roi.dataUrl === 'string' && roi.dataUrl && (
+                          <div className="aspect-square relative overflow-hidden rounded-md">
+                            <Image
+                              src={roi.dataUrl}
+                              alt={`ROI ${roi.id}`}
+                              layout="fill"
+                              objectFit="cover"
+                            />
+                          </div>
+                        )}
+                        <Select
+                          value={roi.category || ''}
+                          onValueChange={(value) => handleCategoryChange(roi.id, value)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="team_A/player">Team A Player</SelectItem>
+                            <SelectItem value="team_A/goalkeeper">Team A Goalkeeper</SelectItem>
+                            <SelectItem value="team_B/player">Team B Player</SelectItem>
+                            <SelectItem value="team_B/goalkeeper">Team B Goalkeeper</SelectItem>
+                            <SelectItem value="referee/referee">Referee</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          onClick={() => handleDiscard(roi.id)}
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Discard
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Export Section */}
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              <h2 className="text-xl font-semibold">Export ROIs</h2>
+              <Button 
+                onClick={() => handleExport(savedROIs, setExportStatus)}
+                className="w-full"
+              >
+                <Check className="w-4 h-4 mr-2" />
+                Export ROIs
+              </Button>
+              {exportStatus && (
+                <p className="text-sm text-gray-600 animate-fade-in">{exportStatus}</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </div>
+    </Layout>
   )
 }
+
+export default Home
 
