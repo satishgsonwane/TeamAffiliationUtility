@@ -11,7 +11,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Header Section */}
         <header className="text-center space-y-2">
           <h1 className="text-4xl font-bold text-gray-800 tracking-tight">ROI Selector</h1>
-          <p className="text-gray-600 text-lg">Select and categorize regions of interest in your image</p>
+          <p className="text-gray-600 text-xl">Select and categorize regions of interest in your image</p>
         </header>
 
         {/* Main Content */}

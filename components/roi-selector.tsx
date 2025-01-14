@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Upload, ImageIcon, Check, X } from 'lucide-react'
 import { Layout } from '@/components/Layout'
+import { Users, User, Shield, Flag } from 'lucide-react'
+
 
 export interface ROI {
   id: number
@@ -545,7 +547,7 @@ const Home = () => {
             {!imageUrl ? (
               <Label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors duration-200">
                 <Upload className="w-12 h-12 text-gray-400 mb-4" />
-                <span className="text-sm font-medium text-gray-600">Upload Image</span>
+                <span className="text-lg font-medium text-gray-600">Upload Image</span>
                 <span className="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</span>
               </Label>
             ) : (
@@ -620,6 +622,17 @@ const Home = () => {
                                 layout="fill"
                                 objectFit="contain"
                               />
+                              {roi.category && (
+                                <div className={`absolute inset-0 flex items-center justify-center ${
+                                  roi.category.startsWith('team_A') ? 'bg-blue-500/50' :
+                                  roi.category.startsWith('team_B') ? 'bg-red-500/50' :
+                                  roi.category.startsWith('referee') ? 'bg-yellow-500/50' : ''
+                                }`}>
+                                  {roi.category.endsWith('/player') && <User className="w-8 h-8 text-white" />}
+                                  {roi.category.endsWith('/goalkeeper') && <Shield className="w-8 h-8 text-white" />}
+                                  {roi.category === 'referee/referee' && <Flag className="w-8 h-8 text-white" />}
+                                </div>
+                              )}
                             </div>
                           )}
                           <Select
@@ -631,11 +644,36 @@ const Home = () => {
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="team_A/player">Team A Player</SelectItem>
-                              <SelectItem value="team_A/goalkeeper">Team A Goalkeeper</SelectItem>
-                              <SelectItem value="team_B/player">Team B Player</SelectItem>
-                              <SelectItem value="team_B/goalkeeper">Team B Goalkeeper</SelectItem>
-                              <SelectItem value="referee/referee">Referee</SelectItem>
+                            <SelectItem value="team_A/player">
+                                <div className="flex items-center">
+                                  <User className="w-4 h-4 mr-2 text-blue-500" />
+                                  Team A Player
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="team_A/goalkeeper">
+                                <div className="flex items-center">
+                                  <Shield className="w-4 h-4 mr-2 text-blue-500" />
+                                  Team A Goalkeeper
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="team_B/player">
+                                <div className="flex items-center">
+                                  <User className="w-4 h-4 mr-2 text-red-500" />
+                                  Team B Player
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="team_B/goalkeeper">
+                                <div className="flex items-center">
+                                  <Shield className="w-4 h-4 mr-2 text-red-500" />
+                                  Team B Goalkeeper
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="referee/referee">
+                                <div className="flex items-center">
+                                  <Flag className="w-4 h-4 mr-2 text-yellow-500" />
+                                  Referee
+                                </div>
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <Button 
