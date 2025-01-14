@@ -8,9 +8,9 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Upload, ImageIcon, Check, X } from 'lucide-react'
+import { Upload,Check, X } from 'lucide-react'
 import { Layout } from '@/components/Layout'
-import { Users, User, Shield, Flag } from 'lucide-react'
+import { User, Shield, Flag } from 'lucide-react'
 
 
 export interface ROI {
