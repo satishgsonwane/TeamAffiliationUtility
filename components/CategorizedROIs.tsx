@@ -22,12 +22,17 @@ export function CategorizedROIs({ rois }: CategorizedROIsProps) {
                 .filter(roi => roi.category === category)
                 .map(roi => (
                   <div key={roi.id} className="relative w-full h-32">
-                    <Image 
-                      src={roi.dataUrl} 
-                      alt={`${category} ROI ${roi.id}`} 
-                      layout="fill"
-                      objectFit="contain"
-                    />
+                    {
+                      roi.dataUrl && (
+                        <Image
+                          src={roi.dataUrl}
+                          alt={`${category} ROI ${roi.id}`}
+                          layout="fill"
+                          objectFit="contain"
+                        />
+                      )
+                    }
+
                   </div>
                 ))
               }

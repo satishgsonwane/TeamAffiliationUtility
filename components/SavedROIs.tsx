@@ -40,19 +40,23 @@ export function SavedROIs({ rois, onDiscard, onCategoryChange }: SavedROIsProps)
         {rois.map((roi) => (
           <div
             key={roi.id}
-            className={`border p-2 ${
-              selectedROIs.has(roi.id) ? 'border-red-500' : 'border-gray-300'
-            }`}
+            className={`border p-2 ${selectedROIs.has(roi.id) ? 'border-red-500' : 'border-gray-300'
+              }`}
           >
             <div className="relative w-full h-40 mb-2">
-              <Image 
-                src={roi.dataUrl} 
-                alt={`ROI ${roi.id}`} 
-                layout="fill"
-                objectFit="contain"
-                className="cursor-pointer"
-                onClick={() => toggleROI(roi.id)}
-              />
+              {
+                roi.dataUrl && (
+                  <Image
+                    src={roi.dataUrl}
+                    alt={`ROI ${roi.id}`}
+                    layout="fill"
+                    objectFit="contain"
+                    className="cursor-pointer"
+                    onClick={() => toggleROI(roi.id)}
+                  />
+                )
+              }
+
             </div>
             <Select
               onValueChange={(value: any) => onCategoryChange(roi.id, value)}
